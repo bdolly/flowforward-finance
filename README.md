@@ -12,7 +12,7 @@ A microservices platform built with FastAPI, SQLAlchemy, and PostgreSQL, managed
 
 ### Quick Start with Docker
 
-```bash
+```bash 
 # Start all services (databases + APIs)
 docker compose up --build
 

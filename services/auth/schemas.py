@@ -93,3 +93,4 @@ class HealthResponse(BaseModel):
     service: str
     version: str
 
+

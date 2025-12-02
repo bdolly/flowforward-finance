@@ -129,3 +129,4 @@ class RefreshToken(Base):
         """Check if the token is valid (not expired and not revoked)."""
         return not self.is_expired and not self.is_revoked
 
+

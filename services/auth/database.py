@@ -49,3 +49,4 @@ def create_tables() -> None:
     """Create all database tables."""
     Base.metadata.create_all(bind=engine)
 
+

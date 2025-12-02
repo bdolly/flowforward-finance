@@ -112,3 +112,4 @@ CurrentSuperuser = Annotated[User, Depends(get_current_active_superuser)]
 DBSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 
+
