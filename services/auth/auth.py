@@ -3,7 +3,9 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from passlib.context import CryptContext
@@ -174,7 +176,7 @@ def register(
 
 @router.post("/login", response_model=Token)
 def login(
-    form_data: OAuth2PasswordRequestForm,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DBSession,
     settings: AppSettings,
 ) -> Token:
@@ -386,4 +388,5 @@ def get_current_user_info(
         UserResponse: Current user data
     """
     return current_user
+
 
