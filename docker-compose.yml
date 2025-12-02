@@ -1,14 +1,7 @@
-version: "3.9"
-
 # Root docker-compose that includes all service-specific compose files
 # Run `docker compose up` from the root to start all services
 
 include:
   - path: services/auth/docker-compose.yml
-    project_directory: .
 
-# Shared network for inter-service communication
-networks:
-  flowforward-network:
-    driver: bridge
 

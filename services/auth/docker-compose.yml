@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres-auth:
     image: postgres:16-alpine
@@ -28,6 +26,6 @@ volumes:
 
 networks:
   flowforward-network:
-    external: true
-    name: flowforward-finance_flowforward-network
+    driver: bridge
+
 
