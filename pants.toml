@@ -1,0 +1,42 @@
+[GLOBAL]
+pants_version = "2.23.0"
+backend_packages = [
+    "pants.backend.python",
+    "pants.backend.python.lint.black",
+    "pants.backend.python.lint.isort",
+    "pants.backend.python.typecheck.mypy",
+    "pants.backend.docker",
+]
+
+[anonymous-telemetry]
+enabled = false
+
+[python]
+interpreter_constraints = ["CPython>=3.12,<3.13"]
+enable_resolves = true
+
+[python.resolves]
+python-default = "3rdparty/python/default.lock"
+
+[source]
+root_patterns = [
+    "/",
+    "/services/*",
+    "/shared",
+]
+
+[pytest]
+args = ["-vv"]
+
+[black]
+config = "pyproject.toml"
+
+[isort]
+config = ["pyproject.toml"]
+
+[mypy]
+config = "pyproject.toml"
+
+[docker]
+build_args = []
+

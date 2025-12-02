@@ -1,0 +1,46 @@
+[project]
+name = "flowforward-finance"
+version = "0.1.0"
+description = "FlowForward Finance - Microservices Platform"
+requires-python = ">=3.12"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+exclude = '''
+/(
+    \.git
+    | \.pants.d
+    | \.pids
+    | dist
+    | build
+    | \.venv
+    | venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["services", "shared"]
+skip = [".git", ".pants.d", ".pids", "dist", "build", ".venv", "venv"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "^\\.pants\\.d/",
+    "^\\.pids/",
+    "^dist/",
+    "^build/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["services", "shared"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+

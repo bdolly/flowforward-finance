@@ -1,0 +1,3 @@
+# Root-level shared dependencies
+# Service-specific dependencies are defined in each service's pyproject.toml
+
