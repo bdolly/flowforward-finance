@@ -189,4 +189,3 @@ class PublishError(Exception):
         """
         super().__init__(message)
         self.event = event
-

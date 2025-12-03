@@ -1,9 +1,9 @@
-"""Event payload definitions for domain events.
+"""Auth service event definitions.
 
-Provides typed payload models for different event types.
+Contains event types and payloads specific to the authentication domain.
 """
 
-from shared.events.payloads.auth import (
+from services.auth.events.payloads import (
     LoginFailedPayload,
     PasswordChangedPayload,
     TokenRefreshedPayload,
@@ -12,9 +12,12 @@ from shared.events.payloads.auth import (
     UserRegisteredPayload,
     UserUpdatedPayload,
 )
+from services.auth.events.types import AuthEventType
 
 __all__ = [
-    # Auth payloads
+    # Event types
+    "AuthEventType",
+    # Payloads
     "UserRegisteredPayload",
     "UserLoggedInPayload",
     "UserLoggedOutPayload",

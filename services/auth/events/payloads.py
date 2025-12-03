@@ -47,7 +47,9 @@ class LoginFailedPayload(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     username: str
-    reason: str = Field(..., description="Reason for failure: invalid_credentials, inactive_user")
+    reason: str = Field(
+        ..., description="Reason for failure: invalid_credentials, inactive_user"
+    )
     ip_address: str | None = None
     user_agent: str | None = None
     attempted_at: datetime

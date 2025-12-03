@@ -2,34 +2,25 @@
 
 This module provides a common event-driven architecture foundation including:
 - Base event models with Pydantic validation
-- Event type definitions for domain events
 - Publisher abstraction (Strategy pattern for different backends)
 - Subscriber abstraction for consuming events
-- Event payloads for typed domain events
+
+Domain-specific event types and payloads should be defined in their
+respective services (e.g., services/auth/events/).
 """
 
 from shared.events.base import DomainEvent, EventMetadata
 from shared.events.handlers import CompositeEventHandler, EventHandler
-from shared.events.payloads.auth import (
-    LoginFailedPayload,
-    PasswordChangedPayload,
-    TokenRefreshedPayload,
-    UserLoggedInPayload,
-    UserLoggedOutPayload,
-    UserRegisteredPayload,
-    UserUpdatedPayload,
-)
 from shared.events.publisher import EventPublisher, InMemoryPublisher, PublishError
 from shared.events.subscriber import EventSubscriber, InMemorySubscriber, SubscriptionError
-from shared.events.types import AuthEventType, EventType
+from shared.events.types import EventType
 
 __all__ = [
     # Base models
     "DomainEvent",
     "EventMetadata",
-    # Event types
+    # System event types
     "EventType",
-    "AuthEventType",
     # Publisher
     "EventPublisher",
     "InMemoryPublisher",
@@ -41,13 +32,4 @@ __all__ = [
     # Handlers
     "EventHandler",
     "CompositeEventHandler",
-    # Auth payloads
-    "UserRegisteredPayload",
-    "UserLoggedInPayload",
-    "UserLoggedOutPayload",
-    "LoginFailedPayload",
-    "TokenRefreshedPayload",
-    "PasswordChangedPayload",
-    "UserUpdatedPayload",
 ]
-

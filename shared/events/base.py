@@ -98,4 +98,3 @@ class DomainEvent(BaseModel, Generic[PayloadT]):
             source=self.metadata.source,
         )
         return self.model_copy(update={"metadata": new_metadata})
-
