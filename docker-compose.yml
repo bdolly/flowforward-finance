@@ -1,7 +1,10 @@
 # Root docker-compose that includes all service-specific compose files
-# Run `docker compose up` from the root to start all services
+# 
+# Usage:
+#   Normal mode:    docker compose --profile default up
+#   Debug mode:     docker compose --profile debug up --build
+#   
+# Debug mode exposes port 5678 for VS Code debugger attach
 
 include:
   - path: services/auth/docker-compose.yml
-
-

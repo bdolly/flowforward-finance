@@ -20,11 +20,15 @@ services:
       - flowforward-network
     restart: unless-stopped
 
+  # Production auth service
   auth-service:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: flowforward-auth-service
+    profiles:
+      - default
+      - prod
     environment:
       AUTH_DB_USER: ${AUTH_DB_USER:-auth_user}
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth_password}
@@ -35,7 +39,7 @@ services:
       AUTH_JWT_ALGORITHM: ${AUTH_JWT_ALGORITHM:-HS256}
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      DEBUG: ${DEBUG:-false}
+      DEBUG: "false"
     ports:
       - "${AUTH_SERVICE_PORT:-8000}:8000"
     depends_on:
@@ -45,6 +49,37 @@ services:
       - flowforward-network
     restart: unless-stopped
 
+  # Debug auth service with debugpy
+  auth-service-debug:
+    build:
+      context: .
+      dockerfile: Dockerfile.debug
+    container_name: flowforward-auth-service-debug
+    profiles:
+      - debug
+    environment:
+      AUTH_DB_USER: ${AUTH_DB_USER:-auth_user}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth_password}
+      AUTH_DB_NAME: ${AUTH_DB_NAME:-auth_db}
+      AUTH_DB_HOST: auth-db
+      AUTH_DB_PORT: 5432
+      AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      AUTH_JWT_ALGORITHM: ${AUTH_JWT_ALGORITHM:-HS256}
+      AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      DEBUG: "true"
+    ports:
+      - "${AUTH_SERVICE_PORT:-8000}:8000"
+      - "5678:5678"  # debugpy port
+    volumes:
+      # Mount source code for live reloading during debug
+      - .:/app:cached
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - flowforward-network
+
 volumes:
   auth_db_data:
     name: flowforward_auth_db_data
@@ -52,5 +87,3 @@ volumes:
 networks:
   flowforward-network:
     driver: bridge
-
-

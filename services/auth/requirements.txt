@@ -8,9 +8,11 @@ psycopg2-binary>=2.9.9
 alembic>=1.13.1
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+bcrypt==4.0.1  # Pinned for passlib compatibility (4.1+ breaks passlib)
 pydantic>=2.5.3
 pydantic-settings>=2.1.0
 python-multipart>=0.0.6
 email-validator>=2.1.0
 
-
+# Development/Debug
+debugpy>=1.8.0
