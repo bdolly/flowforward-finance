@@ -1,3 +1,0 @@
-"""FlowForward Finance Authentication Service."""
-
-
