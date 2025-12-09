@@ -274,10 +274,10 @@ class PaginatedAccounts(PaginatedResponse):
     items: list[AccountSummary]
 
 
-class PaginatedTransactions(PaginatedResponse):
-    """Paginated transactions response."""
+# class PaginatedTransactions(PaginatedResponse):
+#     """Paginated transactions response."""
 
-    items: list[TransactionResponse]
+#     items: list[TransactionResponse]
 
 
 class PaginatedAccountBalanceHistory(PaginatedResponse):

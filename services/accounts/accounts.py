@@ -9,7 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from dependencies import AuthenticatedUser, DBSession
-from models import Account, AccountBalanceHistory, BalanceSource, BalanceType, Transaction
+from models import Account, AccountBalanceHistory, BalanceSource, BalanceType 
 from models import AccountStatus as AccountStatusModel
 from models import TransactionType as TransactionTypeModel
 from schemas import (
@@ -244,7 +244,7 @@ def get_account(
     return account
 
 
-@router.patch("/{account_id}", response_model=Account)
+@router.patch("/{account_id}", response_model=AccountResponse)
 def update_account(
     account_id: str,
     account_data: AccountUpdate,

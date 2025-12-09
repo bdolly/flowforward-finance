@@ -21,7 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
-from services.accounts.PlaidAccountModels import PlaidAccountMixin
+from PlaidAccountModels import PlaidAccountMixin
 
 
 class AccountType(str, Enum):
@@ -120,7 +120,7 @@ class Account(PlaidAccountMixin, Base):
         back_populates="account",
         cascade="all, delete-orphan",
     )
-    
+
     # get method for balance that gets the current balance from the balance history
     @property
     def balance(self) -> Decimal:
@@ -178,7 +178,6 @@ class AccountBalanceHistory(Base):
         # Ensure source is valid
         CheckConstraint(
             f"source IN ({', '.join([f'\'{source.value}\'' for source in BalanceSource])})",
-            "'system_adjustment')",
             name="ck_valid_source",
         ),
         # Composite index for temporal queries

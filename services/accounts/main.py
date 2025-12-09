@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from accounts import router as accounts_router
-from accounts import transaction_router
+# from accounts import transaction_router
 from config import get_settings
 from database import create_tables
 from schemas import HealthResponse
@@ -50,7 +50,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(accounts_router)
-app.include_router(transaction_router)
+# app.include_router(transaction_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
