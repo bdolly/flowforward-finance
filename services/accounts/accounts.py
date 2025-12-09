@@ -51,15 +51,27 @@ def create_account(
         user_id=current_user.id,
         name=account_data.name,
         account_type=account_data.account_type.value,
-        institution=account_data.institution,
-        account_number_masked=account_data.account_number_masked,
+        institution_name=account_data.institution,
+        mask=account_data.account_number_masked,
         currency=account_data.currency,
         notes=account_data.notes,
         status=AccountStatusModel.ACTIVE.value,
     )
-    # TODO: create a new account balance history record
     
     db.add(account)
+    db.commit()
+    db.refresh(account)
+    
+    # Create initial balance history record
+    balance_history = AccountBalanceHistory(
+        account_id=account.id,
+        balance=account_data.balance,
+        balance_type=BalanceType.CURRENT.value,
+        valid_from=datetime.now(timezone.utc),
+        is_current=True,
+        source=BalanceSource.MANUAL_CORRECTION.value,
+    )
+    db.add(balance_history)
     db.commit()
     db.refresh(account)
 
@@ -188,27 +200,32 @@ def get_balances_by_type(
     Returns:
         list[AccountBalanceSummary]: List of balance summaries by type
     """
-    results = (
-        db.query(
-            Account.account_type,
-            Account.balance.label("total_balance"),
-            func.count(Account.id).label("accounts_count"),
-        )
+    # Get all active accounts with their current balances
+    accounts = (
+        db.query(Account)
         .filter(
             Account.user_id == current_user.id,
             Account.status == AccountStatusModel.ACTIVE.value,
         )
-        .group_by(Account.account_type)
         .all()
     )
 
+    # Group by account type and sum balances
+    type_balances: dict[str, dict] = {}
+    for account in accounts:
+        acc_type = account.account_type
+        if acc_type not in type_balances:
+            type_balances[acc_type] = {"total_balance": Decimal("0.00"), "count": 0}
+        type_balances[acc_type]["total_balance"] += account.balance
+        type_balances[acc_type]["count"] += 1
+
     return [
         AccountBalanceSummary(
-            account_type=AccountType(row.account_type),
-            total_balance=row.total_balance or Decimal("0.00"),
-            accounts_count=row.accounts_count,
+            account_type=AccountType(acc_type),
+            total_balance=data["total_balance"],
+            accounts_count=data["count"],
         )
-        for row in results
+        for acc_type, data in type_balances.items()
     ]
 
 
@@ -282,9 +299,35 @@ def update_account(
         update_data["account_type"] = update_data["account_type"].value
     if "status" in update_data and update_data["status"]:
         update_data["status"] = update_data["status"].value
+    
+    # Handle balance update through balance history (SCD Type 2)
+    if "balance" in update_data:
+        new_balance = update_data.pop("balance")
+        # Close current balance record
+        for history in account.balance_history:
+            if history.is_current:
+                history.is_current = False
+                history.valid_to = datetime.now(timezone.utc)
+        # Create new current balance record
+        new_history = AccountBalanceHistory(
+            account_id=account.id,
+            balance=new_balance,
+            balance_type=BalanceType.CURRENT.value,
+            valid_from=datetime.now(timezone.utc),
+            is_current=True,
+            source=BalanceSource.MANUAL_CORRECTION.value,
+        )
+        db.add(new_history)
+    
+    # Map schema field names to model field names
+    field_mapping = {
+        "institution": "institution_name",
+        "account_number_masked": "mask",
+    }
 
     for field, value in update_data.items():
-        setattr(account, field, value)
+        model_field = field_mapping.get(field, field)
+        setattr(account, model_field, value)
 
     db.commit()
     db.refresh(account)

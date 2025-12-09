@@ -125,12 +125,12 @@ class PlaidAccountMixin:
     """
 
     # Plaid identifiers
-    plaid_account_id: Mapped[str] = mapped_column(
+    plaid_account_id: Mapped[str | None] = mapped_column(
         String(100),
         unique=True,
         index=True,
-        nullable=False,
-        comment="Plaid's unique account identifier",
+        nullable=True,
+        comment="Plaid's unique account identifier (null for manual accounts)",
     )
     plaid_connection_id: Mapped[str | None] = mapped_column(
         String(36),
@@ -214,9 +214,22 @@ class PlaidAccountMixin:
     #     comment="Unofficial currency for non-standard currencies",
     # )
 
+    # Currency
+    currency: Mapped[str] = mapped_column(
+        String(3),
+        nullable=False,
+        default="USD",
+        comment="ISO-4217 currency code",
+    )
+
     # Status
     verification_status: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
         comment="pending_automatic_verification, pending_manual_verification, verified",
     )
+
+    @property
+    def is_manual(self) -> bool:
+        """Check if this is a manually-created account (not linked via Plaid)."""
+        return self.plaid_account_id is None

@@ -121,11 +121,18 @@ class Account(PlaidAccountMixin, Base):
         cascade="all, delete-orphan",
     )
 
-    # get method for balance that gets the current balance from the balance history
     @property
     def balance(self) -> Decimal:
         """Get the current balance for the account."""
-        return self.balance_history.filter(AccountBalanceHistory.is_current == True).first().balance
+        for history in self.balance_history:
+            if history.is_current:
+                return history.balance
+        return Decimal("0.00")
+    
+    @property
+    def institution(self) -> str | None:
+        """Alias for institution_name for API compatibility."""
+        return self.institution_name
 
     def __repr__(self) -> str:
         """Return string representation of Account."""
