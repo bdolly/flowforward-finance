@@ -41,6 +41,21 @@ class TransactionType(str, Enum):
     ADJUSTMENT = "adjustment"
 
 
+class BalanceType(str, Enum):
+    """Enumeration of balance types from Plaid."""
+
+    AVAILABLE = "available"
+    CURRENT = "current"
+
+
+class BalanceSource(str, Enum):
+    """Enumeration of balance snapshot sources."""
+
+    PLAID_SYNC = "plaid_sync"
+    MANUAL_CORRECTION = "manual_correction"
+    SYSTEM_ADJUSTMENT = "system_adjustment"
+
+
 # --- Account Schemas ---
 
 
@@ -104,66 +119,99 @@ class AccountSummary(BaseModel):
     status: AccountStatus
 
 
-# --- Transaction Schemas ---
+# --- Account Balance History Schemas (SCD Type 2) ---
 
 
-class TransactionBase(BaseModel):
-    """Base schema for Transaction."""
+class AccountBalanceHistoryBase(BaseModel):
+    """
+    Base schema for AccountBalanceHistory.
 
-    transaction_type: TransactionType
-    amount: Decimal = Field(..., gt=0)
-    currency: str = Field("USD", min_length=3, max_length=3)
-    description: str | None = Field(None, max_length=500)
-    category: str | None = Field(None, max_length=100)
-    merchant: str | None = Field(None, max_length=255)
-    reference_number: str | None = Field(None, max_length=100)
-    transaction_date: datetime
-    posted_date: datetime | None = None
-    is_pending: bool = False
-    notes: str | None = None
+    Type 2 Slowly Changing Dimension for account balance tracking.
+    Each record represents a point-in-time balance snapshot with temporal validity.
+    """
+
+    balance: Decimal = Field(
+        ...,
+        max_digits=15,
+        decimal_places=2,
+        description="Balance value from Plaid at this point in time",
+    )
+    balance_type: BalanceType = Field(
+        ...,
+        description="Type of balance: 'available' for checking/savings, 'current' for credit/loans",
+    )
+    valid_from: datetime = Field(
+        ...,
+        description="Timestamp when this balance became effective",
+    )
+    valid_to: datetime | None = Field(
+        None,
+        description="Timestamp when this balance was superseded (NULL if current)",
+    )
+    is_current: bool = Field(
+        True,
+        description="Whether this is the current active snapshot (only one per account)",
+    )
+    source: BalanceSource = Field(
+        BalanceSource.PLAID_SYNC,
+        description="Origin of this balance snapshot",
+    )
+    plaid_last_updated: datetime | None = Field(
+        None,
+        description="Timestamp from Plaid indicating when balance was last updated at institution",
+    )
+    metadata: dict = Field(
+        default_factory=dict,
+        description="Audit trail and sync details (original_balance, sync_datetime, etc.)",
+    )
 
 
-class TransactionCreate(TransactionBase):
-    """Schema for creating a new transaction."""
+class AccountBalanceHistoryCreate(AccountBalanceHistoryBase):
+    """Schema for creating a new account balance history record."""
 
-    account_id: str
-    transfer_account_id: str | None = None
-
-
-class TransactionUpdate(BaseModel):
-    """Schema for updating a transaction."""
-
-    transaction_type: TransactionType | None = None
-    amount: Decimal | None = Field(None, gt=0)
-    description: str | None = Field(None, max_length=500)
-    category: str | None = Field(None, max_length=100)
-    merchant: str | None = Field(None, max_length=255)
-    transaction_date: datetime | None = None
-    posted_date: datetime | None = None
-    is_pending: bool | None = None
-    notes: str | None = None
+    account_id: str = Field(
+        ...,
+        description="Account this balance snapshot belongs to",
+    )
 
 
-class TransactionResponse(TransactionBase):
-    """Schema for transaction response."""
+class AccountBalanceHistoryUpdate(BaseModel):
+    """Schema for updating an account balance history record."""
+
+    valid_to: datetime | None = None
+    is_current: bool | None = None
+    metadata: dict | None = None
+
+
+class AccountBalanceHistoryResponse(AccountBalanceHistoryBase):
+    """Schema for account balance history response."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     account_id: str
-    user_id: str
-    transfer_account_id: str | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = Field(
+        ...,
+        description="When this record was created in our system",
+    )
+
+
+class AccountBalanceHistorySummary(BaseModel):
+    """Schema for account balance history summary (list view)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    account_id: str
+    balance: Decimal
+    balance_type: BalanceType
+    valid_from: datetime
+    valid_to: datetime | None
+    is_current: bool
+    source: BalanceSource
 
 
 # --- Aggregate Schemas ---
-
-
-class AccountWithTransactions(AccountResponse):
-    """Account with recent transactions."""
-
-    transactions: list[TransactionResponse] = []
 
 
 class NetWorthSummary(BaseModel):
@@ -230,4 +278,10 @@ class PaginatedTransactions(PaginatedResponse):
     """Paginated transactions response."""
 
     items: list[TransactionResponse]
+
+
+class PaginatedAccountBalanceHistory(PaginatedResponse):
+    """Paginated account balance history response."""
+
+    items: list[AccountBalanceHistorySummary]
 
