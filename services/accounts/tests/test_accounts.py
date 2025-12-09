@@ -138,8 +138,10 @@ class TestListAccounts:
 class TestGetAccount:
     """Tests for getting a single account."""
 
-    def test_get_account_success(self, client, auth_headers, create_account):
-        """Test getting an account by ID."""
+    def test_get_account_by_uuid_success(
+        self, client, auth_headers, create_account
+    ):
+        """Test getting an account by UUID."""
         account = create_account(name="Test Account")
 
         response = client.get(
@@ -151,17 +153,95 @@ class TestGetAccount:
         data = response.json()
         assert data["id"] == account["id"]
         assert data["name"] == account["name"]
-        
 
-    def test_get_account_not_found(self, client, auth_headers):
-        """Test getting a non-existent account."""
+    def test_get_account_by_mask_success(
+        self, client, auth_headers, create_account
+    ):
+        """Test getting an account by 4-digit masked account number."""
+        account = create_account(
+            name="Masked Account",
+            account_number_masked="1234",
+        )
+
         response = client.get(
-            "/api/v1/accounts/non-existent-id",
+            "/api/v1/accounts/1234",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == account["id"]
+        assert data["name"] == "Masked Account"
+
+    def test_get_account_by_mask_not_found(self, client, auth_headers):
+        """Test getting an account by mask that doesn't exist."""
+        response = client.get(
+            "/api/v1/accounts/9999",
             headers=auth_headers,
         )
 
         assert response.status_code == 404
         assert response.json()["detail"] == "Account not found"
+
+    def test_get_account_by_uuid_not_found(self, client, auth_headers):
+        """Test getting an account by UUID that doesn't exist."""
+        # Use a valid UUID format that doesn't exist
+        response = client.get(
+            "/api/v1/accounts/00000000-0000-0000-0000-000000000000",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Account not found"
+
+    def test_get_account_invalid_identifier(self, client, auth_headers):
+        """Test getting an account with invalid identifier format."""
+        # Not a valid UUID and not a 4-digit mask
+        response = client.get(
+            "/api/v1/accounts/invalid-id",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
+        # Pydantic validation error
+        data = response.json()
+        assert "detail" in data
+
+    def test_get_account_invalid_mask_format(self, client, auth_headers):
+        """Test getting an account with invalid mask (not exactly 4 digits)."""
+        # 3 digits - not valid
+        response = client.get(
+            "/api/v1/accounts/123",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
+
+        # 5 digits - not valid (and not a UUID)
+        response = client.get(
+            "/api/v1/accounts/12345",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
+
+    def test_get_account_multiple_with_same_mask(
+        self, client, auth_headers, create_account
+    ):
+        """Test behavior when multiple accounts have the same mask."""
+        # Create two accounts with same mask (edge case)
+        create_account(name="Account 1", account_number_masked="5678")
+        create_account(name="Account 2", account_number_masked="5678")
+
+        response = client.get(
+            "/api/v1/accounts/5678",
+            headers=auth_headers,
+        )
+
+        # Should return one account (first match)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["account_number_masked"] == "5678"
 
 
 class TestUpdateAccount:

@@ -134,6 +134,11 @@ class Account(PlaidAccountMixin, Base):
         """Alias for institution_name for API compatibility."""
         return self.institution_name
 
+    @property
+    def account_number_masked(self) -> str | None:
+        """Alias for mask for API compatibility."""
+        return self.mask
+
     def __repr__(self) -> str:
         """Return string representation of Account."""
         return f"<Account(id={self.id}, name={self.name})>"
