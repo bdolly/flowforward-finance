@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -11,7 +11,11 @@ from sqlalchemy.orm import Session
 from config import Settings, get_settings
 from database import get_db
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# Use HTTPBearer for simple Bearer token input in Swagger UI
+bearer_scheme = HTTPBearer(
+    scheme_name="Bearer Token",
+    description="Enter your JWT access token from the auth service",
+)
 
 
 class TokenPayload(BaseModel):
@@ -29,7 +33,7 @@ class CurrentUser(BaseModel):
 
 
 def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> CurrentUser:
     """
@@ -55,7 +59,7 @@ def get_current_user(
 
     try:
         payload = jwt.decode(
-            token,
+            credentials.credentials,
             settings.auth_jwt_secret_key,
             algorithms=[settings.auth_jwt_algorithm],
         )
@@ -68,11 +72,14 @@ def get_current_user(
         if token_type != "access":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type",
+                detail=f"Invalid token type: expected 'access', got '{token_type}'",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    except JWTError:
+    except JWTError as e:
+        # Log for debugging - remove in production
+        print(f"JWT decode error: {e}")
+        print(f"Secret key (first 10 chars): {settings.auth_jwt_secret_key[:10]}...")
         raise credentials_exception
 
     return CurrentUser(id=user_id)

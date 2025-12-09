@@ -1,8 +1,11 @@
 """Pydantic schemas for Accounts Service request/response validation."""
 
+import re
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Union
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,6 +57,68 @@ class BalanceSource(str, Enum):
     PLAID_SYNC = "plaid_sync"
     MANUAL_CORRECTION = "manual_correction"
     SYSTEM_ADJUSTMENT = "system_adjustment"
+
+
+# --- Account Identifier (UUID or Mask) ---
+
+MASK_PATTERN = re.compile(r"^\d{4}$")
+
+
+class AccountIdentifier:
+    """
+    Parsed account identifier - either a UUID or a 4-digit masked account number.
+    
+    Used for path parameters that accept either format.
+    """
+
+    __slots__ = ("value", "is_mask")
+
+    def __init__(self, value: str, is_mask: bool = False):
+        self.value = value
+        self.is_mask = is_mask
+
+    @classmethod
+    def __get_validators__(cls):
+        """Pydantic v1 compatibility."""
+        yield cls.validate
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        """Pydantic v2 schema definition for path parameter support."""
+        from pydantic_core import core_schema
+
+        return core_schema.no_info_plain_validator_function(
+            cls.validate,
+            serialization=core_schema.to_string_ser_schema(),
+        )
+
+    @classmethod
+    def validate(cls, v) -> "AccountIdentifier":
+        """Validate and parse string into AccountIdentifier."""
+        if isinstance(v, cls):
+            return v
+
+        if not isinstance(v, str):
+            raise ValueError("Account identifier must be a string")
+
+        # Check for 4-digit mask pattern
+        if MASK_PATTERN.match(v):
+            return cls(value=v, is_mask=True)
+
+        # Validate as UUID
+        try:
+            uuid_obj = UUID(v)
+            return cls(value=str(uuid_obj), is_mask=False)
+        except ValueError:
+            raise ValueError(
+                "Account identifier must be a valid UUID or 4-digit account mask"
+            )
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return f"AccountIdentifier(value={self.value!r}, is_mask={self.is_mask})"
 
 
 # --- Account Schemas ---

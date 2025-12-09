@@ -15,6 +15,7 @@ from models import TransactionType as TransactionTypeModel
 from schemas import (
     AccountBalanceSummary,
     AccountCreate,
+    AccountIdentifier,
     AccountResponse,
     AccountStatus,
     AccountSummary,
@@ -229,28 +230,29 @@ def get_balances_by_type(
     ]
 
 
-@router.get("/{account_id}", response_model=AccountResponse)
+@router.get("/{account_id_or_mask}", response_model=AccountResponse)
 def get_account(
-    account_id: str,
+    account_id_or_mask: AccountIdentifier,
     db: DBSession,
     current_user: AuthenticatedUser,
 ) -> AccountResponse:
     """
-    Get a specific account by ID.
+    Get a specific account by ID or masked account number.
 
     Args:
-        account_id: Account ID
+        account_id_or_mask: Account UUID or 4-digit masked account number
         db: Database session
         current_user: Current authenticated user
 
     Returns:
-        Account: Account data
+        AccountResponse: Account data
     """
-    account = (
-        db.query(Account)
-        .filter(Account.id == account_id, Account.user_id == current_user.id)
-        .first()
-    )
+    account_query = db.query(Account).filter(Account.user_id == current_user.id)
+
+    if account_id_or_mask.is_mask:
+        account = account_query.filter(Account.mask == account_id_or_mask.value).first()
+    else:
+        account = account_query.filter(Account.id == account_id_or_mask.value).first()
 
     if not account:
         raise HTTPException(
