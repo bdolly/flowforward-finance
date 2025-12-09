@@ -101,6 +101,12 @@ def upgrade() -> None:
             server_default="active",
         ),
         sa.Column(
+            "currency",
+            sa.String(3),
+            nullable=False,
+            server_default="USD",
+        ),
+        sa.Column(
             "is_emergency_fund",
             sa.Boolean(),
             nullable=False,

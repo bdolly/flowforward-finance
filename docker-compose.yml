@@ -8,3 +8,4 @@
 
 include:
   - path: services/auth/docker-compose.yml
+  - path: services/accounts/docker-compose.yml

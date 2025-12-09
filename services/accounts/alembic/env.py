@@ -1,5 +1,11 @@
 """Alembic environment configuration for Accounts Service."""
 
+import sys
+from pathlib import Path
+
+# Add parent directory to path so we can import app modules
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from logging.config import fileConfig
 
 from alembic import context
@@ -8,7 +14,7 @@ from sqlalchemy import engine_from_config, pool
 # Import models and database configuration
 from config import get_settings
 from database import Base
-from models import Account, Transaction  # noqa: F401 - Required for metadata
+# from models import Account, Transaction  # noqa: F401 - Required for metadata
 
 # this is the Alembic Config object
 config = context.config
