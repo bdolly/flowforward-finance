@@ -4,7 +4,8 @@
 python_sources(
     name="events",
     dependencies=[
-        "3rdparty/python:python-default#pydantic",
+        "3rdparty/python:pydantic",
+        "3rdparty/python:aioboto3",
     ],
 )
 

@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     app_name: str = "FlowForward Accounts Service"
     debug: bool = False
 
+    # AWS Configuration
+    aws_region: str = "us-east-1"
+    aws_endpoint_url: str = "http://localhost:4566"
+    aws_accounts_sns_topic_name: str = "accounts-events-topic"
+    aws_accounts_sqs_queue_url: str = "account-events"
+
     @property
     def database_url(self) -> str:
         """Construct the database URL from individual components."""

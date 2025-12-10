@@ -23,8 +23,8 @@ services:
   # Production auth service
   auth-service:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/auth/Dockerfile
     container_name: auth-service
     profiles:
       - default
@@ -61,8 +61,8 @@ services:
   # Debug auth service with debugpy
   auth-service-debug:
     build:
-      context: .
-      dockerfile: Dockerfile.debug
+      context: ../..
+      dockerfile: services/auth/Dockerfile.debug
     container_name: auth-service-debug
     profiles:
       - debug
@@ -89,6 +89,8 @@ services:
       - "5678:5678"  # debugpy port
     volumes:
       # Mount source code for live reloading during debug
+      # Mount shared first, then service (service mount won't overwrite /app/shared)
+      - ../../shared:/app/shared:cached
       - .:/app:cached
     depends_on:
       auth-db:

@@ -9,14 +9,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY services/auth/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install debugpy for remote debugging
 RUN pip install debugpy
 
-# Copy application code
-COPY . .
+# Copy shared directory
+COPY shared /app/shared
+
+# Copy service application code
+COPY services/auth /app
+
+# Set PYTHONPATH so Python can find the shared module
+ENV PYTHONPATH=/app
 
 # Expose ports: 8000 for app, 5678 for debugger
 EXPOSE 8000

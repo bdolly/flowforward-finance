@@ -4,6 +4,7 @@ python_sources(
     name="accounts",
     dependencies=[
         ":accounts-requirements",
+        "shared/events",
     ],
 )
 

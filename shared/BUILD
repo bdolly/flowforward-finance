@@ -3,6 +3,9 @@
 
 python_sources(
     name="shared",
+    dependencies=[
+        "shared/events",
+    ],
 )
 
 

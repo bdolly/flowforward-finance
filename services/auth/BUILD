@@ -4,6 +4,7 @@ python_sources(
     name="auth",
     dependencies=[
         ":auth-requirements",
+        "shared/events",
     ],
 )
 

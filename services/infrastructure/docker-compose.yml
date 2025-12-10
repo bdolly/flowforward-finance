@@ -4,7 +4,7 @@ services:
     container_name: flowforward-localstack
     environment:
       # Services to enable
-      SERVICES: sqs,kms
+      SERVICES: sqs,kms,sns
       # Debug logging (set to 1 for verbose logs)
       DEBUG: ${LOCALSTACK_DEBUG:-0}
       # Persistence (data survives container restarts)
@@ -22,7 +22,7 @@ services:
       # Persist LocalStack data
       - localstack_data:/var/lib/localstack
       # Mount init scripts
-      - ./init-scripts:/etc/localstack/init/ready.d
+      # - ./init-scripts:/etc/localstack/init/ready.d
       # Docker socket for Lambda (if needed later)
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:

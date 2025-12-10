@@ -23,8 +23,8 @@ services:
   # Production accounts service
   accounts-service:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/accounts/Dockerfile
     container_name: accounts-service
     profiles:
       - default
@@ -59,8 +59,8 @@ services:
   # Debug accounts service with debugpy
   accounts-service-debug:
     build:
-      context: .
-      dockerfile: Dockerfile.debug
+      context: ../..
+      dockerfile: services/accounts/Dockerfile.debug
     container_name: accounts-service-debug
     profiles:
       - debug
@@ -85,6 +85,8 @@ services:
       - "5679:5679"  # debugpy port
     volumes:
       # Mount source code for live reloading during debug
+      # Mount shared first, then service (service mount won't overwrite /app/shared)
+      - ../../shared:/app/shared:cached
       - .:/app:cached
     depends_on:
       accounts-db:

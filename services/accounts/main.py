@@ -11,7 +11,7 @@ from accounts import router as accounts_router
 from config import get_settings
 from database import create_tables
 from schemas import HealthResponse
-
+from shared.events.infrastructure.sns_setup import setup_sns_topic
 settings = get_settings()
 
 
@@ -24,6 +24,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     create_tables()
+    # Set up accounts service event topic
+    topic_arn = await setup_sns_topic(
+        topic_name=settings.aws_accounts_sns_topic_name,
+        region_name=settings.aws_region,
+        endpoint_url=settings.aws_endpoint_url,
+    )
+    app.state.accounts_topic_arn = topic_arn
     yield
     # Shutdown
     pass

@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     auth_access_token_expire_minutes: int = 30
     auth_refresh_token_expire_days: int = 7
 
+    # AWS Configuration
+    aws_region: str = "us-east-1"
+    aws_endpoint_url: str = "http://localhost:4566"
+    aws_account_id: str = "000000000000"
+    aws_auth_sns_topic_name: str = "auth-events-topic"
+    aws_auth_sqs: str = "auth-eventsy"
+
     # Application Configuration
     app_name: str = "FlowForward Auth Service"
     debug: bool = False
