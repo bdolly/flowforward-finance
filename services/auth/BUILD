@@ -19,4 +19,11 @@ pex_binary(
     dependencies=[":auth"],
 )
 
+docker_image(
+    name="auth-image",
+    source="Dockerfile",
+    context_root="../..",
+    image_tags=["latest", "{env.GIT_SHA}"],
+    dependencies=[":auth"],
+)
 
