@@ -1,15 +1,31 @@
 """Configuration management for Auth Service using Pydantic Settings."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Get project root (two levels up from services/auth/config.py)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_ROOT_ENV_FILE = _PROJECT_ROOT / ".env"
+# Service-specific .env (one level up from config.py)
+_SERVICE_DIR = Path(__file__).parent
+_SERVICE_ENV_FILE = _SERVICE_DIR / ".env"
+
+# Build list of env files: root first, then service-specific
+# (service overrides root)
+_env_files = []
+if _ROOT_ENV_FILE.exists():
+    _env_files.append(str(_ROOT_ENV_FILE))
+if _SERVICE_ENV_FILE.exists():
+    _env_files.append(str(_SERVICE_ENV_FILE))
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_files if _env_files else None,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -33,7 +49,7 @@ class Settings(BaseSettings):
     aws_endpoint_url: str = "http://localhost:4566"
     aws_account_id: str = "000000000000"
     aws_auth_sns_topic_name: str = "auth-events-topic"
-    aws_auth_sqs: str = "auth-eventsy"
+    aws_auth_sqs: str = "flowforward-auth-events"
 
     # Application Configuration
     app_name: str = "FlowForward Auth Service"
@@ -60,5 +76,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
-
-

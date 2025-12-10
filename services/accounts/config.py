@@ -1,15 +1,31 @@
 """Configuration management for Accounts Service using Pydantic Settings."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Get project root (two levels up from services/accounts/config.py)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_ROOT_ENV_FILE = _PROJECT_ROOT / ".env"
+# Service-specific .env (one level up from config.py)
+_SERVICE_DIR = Path(__file__).parent
+_SERVICE_ENV_FILE = _SERVICE_DIR / ".env"
+
+# Build list of env files: root first, then service-specific
+# (service overrides root)
+_env_files = []
+if _ROOT_ENV_FILE.exists():
+    _env_files.append(str(_ROOT_ENV_FILE))
+if _SERVICE_ENV_FILE.exists():
+    _env_files.append(str(_SERVICE_ENV_FILE))
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_files if _env_files else None,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -40,16 +56,18 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         """Construct the database URL from individual components."""
         return (
-            f"postgresql://{self.accounts_db_user}:{self.accounts_db_password}"
-            f"@{self.accounts_db_host}:{self.accounts_db_port}/{self.accounts_db_name}"
+            f"postgresql://{self.accounts_db_user}:"
+            f"{self.accounts_db_password}@{self.accounts_db_host}:"
+            f"{self.accounts_db_port}/{self.accounts_db_name}"
         )
 
     @property
     def async_database_url(self) -> str:
         """Construct the async database URL for async SQLAlchemy."""
         return (
-            f"postgresql+asyncpg://{self.accounts_db_user}:{self.accounts_db_password}"
-            f"@{self.accounts_db_host}:{self.accounts_db_port}/{self.accounts_db_name}"
+            f"postgresql+asyncpg://{self.accounts_db_user}:"
+            f"{self.accounts_db_password}@{self.accounts_db_host}:"
+            f"{self.accounts_db_port}/{self.accounts_db_name}"
         )
 
 
@@ -57,4 +75,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
-

@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     create_tables()
+    
     # Set up accounts service event topic
     topic_arn = await setup_sns_topic(
         topic_name=settings.aws_accounts_sns_topic_name,

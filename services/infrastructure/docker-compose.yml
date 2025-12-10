@@ -1,16 +1,23 @@
+# This docker-compose file inherits environment variables from the root .env file
+# For variable substitution in this file, ensure .env exists at the project root
+# or run: docker-compose --env-file ../../.env up
+
 services:
-  localstack:
+  flowforward-localstack:
     image: localstack/localstack:3.0
     container_name: flowforward-localstack
+    env_file:
+      - ../../.env
+      # - ./.env
     environment:
       # Services to enable
-      SERVICES: sqs,kms,sns
+      SERVICES: ${LOCALSTACK_SERVICES:-sqs,sns}
       # Debug logging (set to 1 for verbose logs)
       DEBUG: ${LOCALSTACK_DEBUG:-0}
       # Persistence (data survives container restarts)
       PERSISTENCE: ${LOCALSTACK_PERSISTENCE:-1}
-      # Default region
-      DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      # Default region (deprecated?)
+      # DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       # Run init scripts on startup
       DOCKER_HOST: unix:///var/run/docker.sock
     ports:
@@ -26,7 +33,7 @@ services:
       # Docker socket for Lambda (if needed later)
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      test: ["CMD", "curl", "-f", "${AWS_ENDPOINT_URL}/_localstack/health"]
       interval: 10s
       timeout: 5s
       retries: 5
