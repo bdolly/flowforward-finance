@@ -1,7 +1,7 @@
 services:
   accounts-db:
     image: postgres:16-alpine
-    container_name: flowforward-postgres-accounts
+    container_name: accounts-db
     environment:
       POSTGRES_USER: ${ACCOUNTS_DB_USER:-accounts_user}
       POSTGRES_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts_password}
@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: flowforward-accounts-service
+    container_name: accounts-service
     profiles:
       - default
       - prod
@@ -38,10 +38,19 @@ services:
       AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
       AUTH_JWT_ALGORITHM: ${AUTH_JWT_ALGORITHM:-HS256}
       DEBUG: "false"
+      # AWS/LocalStack configuration
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      SQS_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/flowforward-account-events
+      KMS_KEY_ALIAS: alias/flowforward-master-key
     ports:
       - "${ACCOUNTS_SERVICE_PORT:-8001}:8001"
     depends_on:
       accounts-db:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     networks:
       - flowforward-network
@@ -52,7 +61,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.debug
-    container_name: flowforward-accounts-service-debug
+    container_name: accounts-service-debug
     profiles:
       - debug
     environment:
@@ -64,6 +73,13 @@ services:
       AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
       AUTH_JWT_ALGORITHM: ${AUTH_JWT_ALGORITHM:-HS256}
       DEBUG: "true"
+      # AWS/LocalStack configuration
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      SQS_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/flowforward-account-events
+      KMS_KEY_ALIAS: alias/flowforward-master-key
     ports:
       - "${ACCOUNTS_SERVICE_PORT:-8001}:8001"
       - "5679:5679"  # debugpy port
@@ -72,6 +88,8 @@ services:
       - .:/app:cached
     depends_on:
       accounts-db:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     networks:
       - flowforward-network

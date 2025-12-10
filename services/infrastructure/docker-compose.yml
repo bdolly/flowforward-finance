@@ -1,0 +1,45 @@
+services:
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: flowforward-localstack
+    environment:
+      # Services to enable
+      SERVICES: sqs,kms
+      # Debug logging (set to 1 for verbose logs)
+      DEBUG: ${LOCALSTACK_DEBUG:-0}
+      # Persistence (data survives container restarts)
+      PERSISTENCE: ${LOCALSTACK_PERSISTENCE:-1}
+      # Default region
+      DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      # Run init scripts on startup
+      DOCKER_HOST: unix:///var/run/docker.sock
+    ports:
+      # LocalStack Gateway (all services)
+      - "${LOCALSTACK_PORT:-4566}:4566"
+      # External service port range (optional)
+      - "4510-4559:4510-4559"
+    volumes:
+      # Persist LocalStack data
+      - localstack_data:/var/lib/localstack
+      # Mount init scripts
+      - ./init-scripts:/etc/localstack/init/ready.d
+      # Docker socket for Lambda (if needed later)
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - flowforward-network
+    restart: unless-stopped
+
+volumes:
+  localstack_data:
+    name: flowforward_localstack_data
+
+networks:
+  flowforward-network:
+    driver: bridge
+

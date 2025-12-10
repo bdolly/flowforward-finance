@@ -1,7 +1,7 @@
 services:
   auth-db:
     image: postgres:16-alpine
-    container_name: flowforward-postgres-auth
+    container_name: auth-db
     environment:
       POSTGRES_USER: ${AUTH_DB_USER:-auth_user}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-auth_password}
@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: flowforward-auth-service
+    container_name: auth-service
     profiles:
       - default
       - prod
@@ -40,10 +40,19 @@ services:
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-7}
       DEBUG: "false"
+      # AWS/LocalStack configuration
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      SQS_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/flowforward-auth-events
+      KMS_KEY_ALIAS: alias/flowforward-master-key
     ports:
       - "${AUTH_SERVICE_PORT:-8000}:8000"
     depends_on:
       auth-db:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     networks:
       - flowforward-network
@@ -54,7 +63,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.debug
-    container_name: flowforward-auth-service-debug
+    container_name: auth-service-debug
     profiles:
       - debug
     environment:
@@ -68,6 +77,13 @@ services:
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-7}
       DEBUG: "true"
+      # AWS/LocalStack configuration
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      SQS_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/flowforward-auth-events
+      KMS_KEY_ALIAS: alias/flowforward-master-key
     ports:
       - "${AUTH_SERVICE_PORT:-8000}:8000"
       - "5678:5678"  # debugpy port
@@ -76,6 +92,8 @@ services:
       - .:/app:cached
     depends_on:
       auth-db:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     networks:
       - flowforward-network
