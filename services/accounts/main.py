@@ -1,5 +1,6 @@
 """FastAPI application entry point for Accounts Service."""
 
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -10,9 +11,68 @@ from accounts import router as accounts_router
 # from accounts import transaction_router
 from config import get_settings
 from database import create_tables
+from events.auth_handlers import (
+    UserDeletedHandler,
+    UserLoggedInHandler,
+    UserRegisteredHandler,
+)
 from schemas import HealthResponse
-from shared.events.infrastructure.sns_setup import setup_sns_topic
+from shared.events.infrastructure.sqs_setup import subscribe_queue_to_topic
+from shared.events.sqs_subscriber import SQSSubscriber
+from shared.logging_config import setup_logging
+
+# Configure logging before creating logger
 settings = get_settings()
+setup_logging(debug=settings.debug)
+
+logger = logging.getLogger(__name__)
+
+
+async def setup_auth_event_subscription(app: FastAPI) -> SQSSubscriber:
+    """Set up subscription to auth service events via SNS → SQS.
+
+    Creates an SQS queue, subscribes it to the auth SNS topic,
+    and starts polling for events.
+
+    Args:
+        app: FastAPI application instance
+
+    Returns:
+        The configured and started SQS subscriber
+    """
+    # Subscribe accounts queue to auth SNS topic
+    queue_url, subscription_arn = await subscribe_queue_to_topic(
+        queue_name=settings.aws_accounts_auth_events_queue,
+        topic_arn=settings.auth_topic_arn,
+        region_name=settings.aws_region,
+        endpoint_url=settings.aws_endpoint_url,
+    )
+
+    logger.info(
+        f"Subscribed to auth events: queue={queue_url}, "
+        f"subscription={subscription_arn}"
+    )
+
+    # Create and configure the SQS subscriber
+    subscriber = SQSSubscriber(
+        queue_url=queue_url,
+        region_name=settings.aws_region,
+        endpoint_url=settings.aws_endpoint_url,
+        max_messages=10,
+        wait_time_seconds=20,
+        visibility_timeout=60,
+    )
+
+    # Register event handlers
+    subscriber.register_handler(UserRegisteredHandler())
+    subscriber.register_handler(UserDeletedHandler())
+    subscriber.register_handler(UserLoggedInHandler())
+
+    # Start consuming events
+    await subscriber.connect()
+    await subscriber.start()
+
+    return subscriber
 
 
 @asynccontextmanager
@@ -24,17 +84,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     create_tables()
-    
-    # Set up accounts service event topic
-    topic_arn = await setup_sns_topic(
-        topic_name=settings.aws_accounts_sns_topic_name,
-        region_name=settings.aws_region,
-        endpoint_url=settings.aws_endpoint_url,
-    )
-    app.state.accounts_topic_arn = topic_arn
+
+    # Subscribe to auth service events (SNS → SQS fan-out)
+    auth_subscriber = await setup_auth_event_subscription(app)
+    app.state.auth_subscriber = auth_subscriber
+
+    logger.info("Accounts service started - listening for auth events")
+
     yield
-    # Shutdown
-    pass
+
+    # Shutdown - stop the subscriber gracefully
+    if hasattr(app.state, "auth_subscriber"):
+        await app.state.auth_subscriber.stop()
+        await app.state.auth_subscriber.disconnect()
+        logger.info("Auth event subscriber stopped")
 
 
 app = FastAPI(
@@ -94,4 +157,3 @@ if __name__ == "__main__":
         port=8001,
         reload=settings.debug,
     )
-

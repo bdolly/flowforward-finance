@@ -82,6 +82,35 @@ awslocal sqs create-queue \
 echo "Created queue: flowforward-account-events"
 
 # ============================================
+# SNS - Create topics
+# ============================================
+echo "Creating SNS topics..."
+
+# Auth events topic
+AUTH_TOPIC_ARN=$(awslocal sns create-topic \
+    --name flowforward-auth-events \
+    --query 'TopicArn' \
+    --output text)
+
+echo "Created SNS topic: $AUTH_TOPIC_ARN"
+
+# Account events topic
+ACCOUNT_TOPIC_ARN=$(awslocal sns create-topic \
+    --name flowforward-account-events \
+    --query 'TopicArn' \
+    --output text)
+
+echo "Created SNS topic: $ACCOUNT_TOPIC_ARN"
+
+# General events topic
+EVENTS_TOPIC_ARN=$(awslocal sns create-topic \
+    --name flowforward-events \
+    --query 'TopicArn' \
+    --output text)
+
+echo "Created SNS topic: $EVENTS_TOPIC_ARN"
+
+# ============================================
 # Verification
 # ============================================
 echo ""
@@ -93,6 +122,10 @@ awslocal kms list-aliases --query 'Aliases[?starts_with(AliasName, `alias/flowfo
 echo ""
 echo "SQS Queues:"
 awslocal sqs list-queues --query 'QueueUrls' --output table
+
+echo ""
+echo "SNS Topics:"
+awslocal sns list-topics --query 'Topics[?contains(TopicArn, `flowforward`)]' --output table
 
 echo ""
 echo "=== LocalStack initialization complete ==="

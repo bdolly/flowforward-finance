@@ -49,8 +49,20 @@ class Settings(BaseSettings):
     # AWS Configuration
     aws_region: str = "us-east-1"
     aws_endpoint_url: str = "http://localhost:4566"
+    aws_account_id: str = "000000000000"
+    
+    # Accounts service event publishing
     aws_accounts_sns_topic_name: str = "accounts-events-topic"
     aws_accounts_sqs_queue_url: str = "account-events"
+    
+    # Auth event subscription (SNS → SQS fan-out)
+    aws_auth_sns_topic_name: str = "auth-events-topic"
+    aws_accounts_auth_events_queue: str = "accounts-auth-events-queue"
+
+    @property
+    def auth_topic_arn(self) -> str:
+        """Construct the auth SNS topic ARN."""
+        return f"arn:aws:sns:{self.aws_region}:{self.aws_account_id}:{self.aws_auth_sns_topic_name}"
 
     @property
     def database_url(self) -> str:

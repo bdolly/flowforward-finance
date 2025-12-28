@@ -1,18 +1,19 @@
 """Authentication routes and JWT logic for Auth Service."""
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from config import Settings
-from dependencies import AppSettings, CurrentUser, DBSession
+from dependencies import AppSettings, CurrentUser, DBSession, EventPublisher
 from models import RefreshToken, User
 from schemas import (
     LoginRequest,
@@ -131,9 +132,10 @@ def authenticate_user(db: Session, username: str, password: str) -> User | None:
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(
+async def register(
     user_data: UserCreate,
     db: DBSession,
+    event_publisher: EventPublisher,
 ) -> User:
     """
     Register a new user.
@@ -141,6 +143,7 @@ def register(
     Args:
         user_data: User registration data
         db: Database session
+        event_publisher: Auth event publisher
 
     Returns:
         UserResponse: Created user data
@@ -154,7 +157,9 @@ def register(
         )
 
     # Check if username already exists
-    existing_username = db.query(User).filter(User.username == user_data.username).first()
+    existing_username = (
+        db.query(User).filter(User.username == user_data.username).first()
+    )
     if existing_username:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -171,14 +176,23 @@ def register(
     db.commit()
     db.refresh(user)
 
+    # Publish user registered event
+    await event_publisher.publish_user_registered(
+        user_id=user.id,
+        email=user.email,
+        username=user.username,
+    )
+
     return user
 
 
 @router.post("/login", response_model=Token)
-def login(
+async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    request: Request,
     db: DBSession,
     settings: AppSettings,
+    event_publisher: EventPublisher,
 ) -> Token:
     """
     Authenticate user and return access and refresh tokens.
@@ -187,15 +201,26 @@ def login(
 
     Args:
         form_data: OAuth2 password request form
+        request: FastAPI request for client info
         db: Database session
         settings: Application settings
+        event_publisher: Auth event publisher
 
     Returns:
         Token: Access and refresh tokens
     """
     user = authenticate_user(db, form_data.username, form_data.password)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
     if not user:
+        # Publish login failed event
+        await event_publisher.publish_login_failed(
+            username=form_data.username,
+            reason="invalid_credentials",
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -203,10 +228,24 @@ def login(
         )
 
     if not user.is_active:
+        await event_publisher.publish_login_failed(
+            username=form_data.username,
+            reason="inactive_user",
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user",
         )
+
+    # Publish successful login event
+    await event_publisher.publish_user_logged_in(
+        user_id=user.id,
+        username=user.username,
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
 
     return Token(
         access_token=create_access_token(user.id, settings),
@@ -215,10 +254,12 @@ def login(
 
 
 @router.post("/login/json", response_model=Token)
-def login_json(
+async def login_json(
     login_data: LoginRequest,
+    request: Request,
     db: DBSession,
     settings: AppSettings,
+    event_publisher: EventPublisher,
 ) -> Token:
     """
     Authenticate user with JSON body and return tokens.
@@ -227,25 +268,48 @@ def login_json(
 
     Args:
         login_data: Login credentials
+        request: FastAPI request for client info
         db: Database session
         settings: Application settings
+        event_publisher: Auth event publisher
 
     Returns:
         Token: Access and refresh tokens
     """
     user = authenticate_user(db, login_data.username, login_data.password)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
     if not user:
+        await event_publisher.publish_login_failed(
+            username=login_data.username,
+            reason="invalid_credentials",
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
 
     if not user.is_active:
+        await event_publisher.publish_login_failed(
+            username=login_data.username,
+            reason="inactive_user",
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user",
         )
+
+    await event_publisher.publish_user_logged_in(
+        user_id=user.id,
+        username=user.username,
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
 
     return Token(
         access_token=create_access_token(user.id, settings),
@@ -316,10 +380,11 @@ def refresh_tokens(
 
 
 @router.post("/logout", response_model=MessageResponse)
-def logout(
+async def logout(
     refresh_request: RefreshTokenRequest,
     db: DBSession,
     current_user: CurrentUser,
+    event_publisher: EventPublisher,
 ) -> MessageResponse:
     """
     Logout user by revoking the refresh token.
@@ -328,6 +393,7 @@ def logout(
         refresh_request: Refresh token to revoke
         db: Database session
         current_user: Current authenticated user
+        event_publisher: Auth event publisher
 
     Returns:
         MessageResponse: Logout success message
@@ -346,13 +412,20 @@ def logout(
         db_token.is_revoked = True
         db.commit()
 
+    # Publish logout event
+    await event_publisher.publish_user_logged_out(
+        user_id=current_user.id,
+        logout_all_devices=False,
+    )
+
     return MessageResponse(message="Successfully logged out")
 
 
 @router.post("/logout/all", response_model=MessageResponse)
-def logout_all(
+async def logout_all(
     db: DBSession,
     current_user: CurrentUser,
+    event_publisher: EventPublisher,
 ) -> MessageResponse:
     """
     Logout user from all devices by revoking all refresh tokens.
@@ -360,6 +433,7 @@ def logout_all(
     Args:
         db: Database session
         current_user: Current authenticated user
+        event_publisher: Auth event publisher
 
     Returns:
         MessageResponse: Logout success message
@@ -370,6 +444,12 @@ def logout_all(
         RefreshToken.is_revoked == False,  # noqa: E712
     ).update({"is_revoked": True})
     db.commit()
+
+    # Publish logout all event
+    await event_publisher.publish_user_logged_out(
+        user_id=current_user.id,
+        logout_all_devices=True,
+    )
 
     return MessageResponse(message="Successfully logged out from all devices")
 

@@ -3,7 +3,7 @@
 Contains event types and payloads specific to the authentication domain.
 """
 
-from services.auth.events.payloads import (
+from events.payloads import (
     LoginFailedPayload,
     PasswordChangedPayload,
     TokenRefreshedPayload,
@@ -12,7 +12,7 @@ from services.auth.events.payloads import (
     UserRegisteredPayload,
     UserUpdatedPayload,
 )
-from services.auth.events.types import AuthEventType
+from events.types import AuthEventType
 
 __all__ = [
     # Event types

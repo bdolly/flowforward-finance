@@ -8,14 +8,20 @@ services:
     container_name: flowforward-localstack
     env_file:
       - ../../.env
-      # - ./.env
+      - ./.env
     environment:
       # Services to enable
-      SERVICES: ${LOCALSTACK_SERVICES:-sqs,sns}
+      SERVICES: ${LOCALSTACK_SERVICES:-sqs,sns,cloudwatch,kms}
       # Debug logging (set to 1 for verbose logs)
       DEBUG: ${LOCALSTACK_DEBUG:-0}
       # Persistence (data survives container restarts)
       PERSISTENCE: ${LOCALSTACK_PERSISTENCE:-1}
+      # Enable LocalStack Web UI
+      LOCALSTACK_HOST: localhost
+      # Request/response tracing
+      LS_LOG: ${LOCALSTACK_LOG_LEVEL:-info}
+      # Enable request tracing
+      TRACE_ENABLED: ${LOCALSTACK_TRACE_ENABLED:-1}
       # Default region (deprecated?)
       # DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       # Run init scripts on startup
@@ -23,13 +29,15 @@ services:
     ports:
       # LocalStack Gateway (all services)
       - "${LOCALSTACK_PORT:-4566}:4566"
+      # LocalStack Web UI
+      - "${LOCALSTACK_WEB_UI_PORT:-4567}:4567"
       # External service port range (optional)
       - "4510-4559:4510-4559"
     volumes:
       # Persist LocalStack data
       - localstack_data:/var/lib/localstack
       # Mount init scripts
-      # - ./init-scripts:/etc/localstack/init/ready.d
+      - ./init-scripts:/etc/localstack/init/ready.d
       # Docker socket for Lambda (if needed later)
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:

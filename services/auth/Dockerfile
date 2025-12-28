@@ -20,6 +20,8 @@ COPY services/auth /app
 
 # Set PYTHONPATH so Python can find the shared module
 ENV PYTHONPATH=/app
+# Disable Python output buffering for immediate log visibility in containers
+ENV PYTHONUNBUFFERED=1
 
 # Expose port
 EXPOSE 8000

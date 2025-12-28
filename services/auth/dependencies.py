@@ -2,17 +2,30 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
 from database import get_db
+from events.publisher import AuthEventPublisher
 from models import User
 from schemas import TokenPayload
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def get_event_publisher(request: Request) -> AuthEventPublisher:
+    """Get the auth event publisher from app state.
+
+    Args:
+        request: The FastAPI request object
+
+    Returns:
+        AuthEventPublisher: The configured event publisher
+    """
+    return request.app.state.event_publisher
 
 
 def get_current_user(
@@ -111,5 +124,6 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentSuperuser = Annotated[User, Depends(get_current_active_superuser)]
 DBSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+EventPublisher = Annotated[AuthEventPublisher, Depends(get_event_publisher)]
 
 
